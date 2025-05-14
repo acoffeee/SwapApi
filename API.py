@@ -1,52 +1,32 @@
-from flask import Flask, jsonify, request
+import os
 
-app = Flask(__name__)
+from flask import Flask
 
-employees = [
-    {'id': 1, 'name': 'Ashley'},
-    {'id': 2, 'name': 'Kate'},
-    {'id': 3, 'name': 'Joe'}
-]
 
-@app.route('/employees', methods=['GET'])
-def get_employees():
-    return jsonify(employees)
+def create_app(test_config=None):
+    # create and configure the app
+    app = Flask(__name__, instance_relative_config=True)
+    app.config.from_mapping(
+        SECRET_KEY='dev',
+        DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
+    )
 
-@app.route('/employees/<int:id>', methods=['GET'])
-def get_employee(id):
-    employee = next((emp for emp in employees if emp['id'] == id), None)
-    if employee:
-        return jsonify(employee)
-    return jsonify({'message': 'Employee not found'}), 404
+    if test_config is None:
+        # load the instance config, if it exists, when not testing
+        app.config.from_pyfile('config.py', silent=True)
+    else:
+        # load the test config if passed in
+        app.config.from_mapping(test_config)
 
-@app.route('/employees', methods=['POST'])
-def create_employee():
-    data = request.get_json()
-    if 'name' not in data:
-        return jsonify({'message': 'Name is required'}), 400
-    
-    new_employee = {'id': len(employees) + 1, 'name': data['name']}
-    employees.append(new_employee)
-    return jsonify(new_employee), 201
+    # ensure the instance folder exists
+    try:
+        os.makedirs(app.instance_path)
+    except OSError:
+        pass
 
-@app.route('/employees/<int:id>', methods=['PUT'])
-def update_employee(id):
-    employee = next((emp for emp in employees if emp['id'] == id), None)
-    if not employee:
-        return jsonify({'message': 'Employee not found'}), 404
-    
-    data = request.get_json()
-    if 'name' not in data:
-        return jsonify({'message': 'Name is required'}), 400
-    
-    employee['name'] = data['name']
-    return jsonify(employee)
+    # a simple page that says hello
+    @app.route('/hello')
+    def hello():
+        return 'Hello, World!'
 
-@app.route('/employees/<int:id>', methods=['DELETE'])
-def delete_employee(id):
-    global employees
-    employees = [emp for emp in employees if emp['id'] != id]
-    return jsonify({'message': 'Employee deleted'})
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    return app
